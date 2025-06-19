@@ -26,6 +26,9 @@ class GitHubDocServer {
     this.owner = "AndreQuintero";
     this.repo = "with-custom-cursor";
     this.baseUrl = `https://api.github.com/repos/${this.owner}/${this.repo}`;
+    
+    // Medium article URL
+    this.mediumArticleUrl = process.env.MEDIUM_ARTICLE_URL || "https://medium.com/@andre.quintero96/the-react-with-custom-cursor-library-773007d60135";
 
     this.setupToolHandlers();
   }
@@ -90,6 +93,24 @@ class GitHubDocServer {
             properties: {},
             required: [],
           },
+        },
+        {
+          name: "get_medium_article",
+          description: "Fetch the Medium article tutorial about the with-custom-cursor library",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: [],
+          },
+        },
+        {
+          name: "get_all_documentation",
+          description: "Get comprehensive documentation including README, Medium article, and key project files",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: [],
+          },
         }
       ],
     }));
@@ -106,6 +127,10 @@ class GitHubDocServer {
           return await this.getFileContent(args);
         } else if (name === "search_docs") {
           return await this.searchDocs(args);
+        } else if (name === "get_medium_article") {
+          return await this.getMediumArticle(args);
+        } else if (name === "get_all_documentation") {
+          return await this.getAllDocumentation(args);
         } else {
           throw new Error(`Unknown tool: ${name}`);
         }
@@ -195,6 +220,114 @@ class GitHubDocServer {
         },
       ],
     };
+  }
+
+  async getMediumArticle() {
+    try {
+      const response = await fetch(this.mediumArticleUrl, {
+        headers: {
+          'User-Agent': 'MCP-WithCustomCursor-Server',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch Medium article: ${response.status}`);
+      }
+
+      let html = await response.text();
+      
+      // Basic HTML to text conversion for Medium articles
+      // Remove script and style tags
+      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+      
+      // Extract article content (Medium-specific selectors)
+      const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+      if (articleMatch) {
+        html = articleMatch[1];
+      }
+      
+      // Convert HTML to markdown-like text
+      html = html.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n# $1\n');
+      html = html.replace(/<p[^>]*>(.*?)<\/p>/gi, '\n$1\n');
+      html = html.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+      html = html.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+      html = html.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+      html = html.replace(/<pre[^>]*>(.*?)<\/pre>/gi, '\n```\n$1\n```\n');
+      html = html.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+      html = html.replace(/<[^>]+>/g, ''); // Remove remaining HTML tags
+      html = html.replace(/&nbsp;/g, ' ');
+      html = html.replace(/&amp;/g, '&');
+      html = html.replace(/&lt;/g, '<');
+      html = html.replace(/&gt;/g, '>');
+      html = html.replace(/&quot;/g, '"');
+      
+      // Clean up extra whitespace
+      html = html.replace(/\n\s*\n\s*\n/g, '\n\n');
+      html = html.trim();
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `# Medium Article: with-custom-cursor Tutorial\n\nSource: ${this.mediumArticleUrl}\n\n---\n\n${html}`,
+          },
+        ],
+      };
+
+    } catch (error) {
+      throw new Error(`Failed to fetch Medium article: ${error.message}`);
+    }
+  }
+
+  async getAllDocumentation() {
+    try {
+      // Fetch README
+      let readmeContent = "";
+      try {
+        const readmeResult = await this.getReadme({});
+        readmeContent = readmeResult.content[0].text;
+      } catch (error) {
+        readmeContent = `README not available: ${error.message}`;
+      }
+
+      // Fetch Medium article
+      let articleContent = "";
+      try {
+        const articleResult = await this.getMediumArticle({});
+        articleContent = articleResult.content[0].text;
+      } catch (error) {
+        articleContent = `Medium article not available: ${error.message}`;
+      }
+
+      // Fetch package.json for additional context
+      let packageInfo = "";
+      try {
+        const packageResult = await this.getFileContent({ file_path: "package.json" });
+        packageInfo = packageResult.content[0].text;
+      } catch (error) {
+        packageInfo = `Package.json not available: ${error.message}`;
+      }
+
+      const combinedContent = `# Complete with-custom-cursor Documentation\n\n` +
+        `Repository: https://github.com/${this.owner}/${this.repo}\n` +
+        `Last updated: ${new Date().toISOString()}\n\n` +
+        `---\n\n${readmeContent}\n\n` +
+        `---\n\n${articleContent}\n\n` +
+        `---\n\n${packageInfo}`;
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: combinedContent,
+          },
+        ],
+      };
+
+    } catch (error) {
+      throw new Error(`Failed to compile documentation: ${error.message}`);
+    }
   }
 
   async getFileContent({ file_path, branch = "main" }) {
