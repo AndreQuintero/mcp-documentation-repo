@@ -1,0 +1,26 @@
+{
+  "name": "mcp-documentation-repo",
+  "version": "0.1.0",
+  "description": "a mcp server that checks the readme file from a project on GitHub and give me the documentation about it",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "github-doc-mcp-server": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --inspect index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0",
+    "node-fetch": "^3.3.2"
+  },
+  "keywords": [
+    "mcp",
+    "github",
+    "documentation",
+    "claude"
+  ],
+  "author": "Andre Quintero",
+  "license": "MIT"
+}
