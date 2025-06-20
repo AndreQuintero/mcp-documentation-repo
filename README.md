@@ -24,7 +24,7 @@ This server is intended to be run as a Node.js process. It communicates using th
 ### Running the Server
 ```
 npm install
-node index.js
+npm start
 ```
 
 The server will start and listen for MCP requests via stdio.
